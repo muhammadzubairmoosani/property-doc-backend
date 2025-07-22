@@ -19,16 +19,6 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.static("public"));
 
-// Create directories if they don't exist
-const uploadsDir = path.join(__dirname, "uploads");
-const generatedDir = path.join(__dirname, "generated");
-
-fs.ensureDirSync(uploadsDir);
-fs.ensureDirSync(generatedDir);
-
-// Serve static files from generated directory
-app.use("/generated", express.static(generatedDir));
-
 // Root route for health check
 app.get("/", (req, res) => {
   res.json({
@@ -167,24 +157,17 @@ app.post("/generate-document", async (req, res) => {
       });
     }
 
-    // Generate unique filename
+    // Generate unique filename and output path in /tmp
     const timestamp = Date.now();
     const filename = `property_document_${timestamp}.pdf`;
-    const outputPath = path.join(generatedDir, filename);
+    const outputPath = path.join("/tmp", filename);
 
     // Save the filled PDF
     const pdfBytes = await pdfDoc.save();
     await fs.writeFile(outputPath, pdfBytes);
 
-    // Return download URL
-    const downloadUrl = `http://localhost:${PORT}/generated/${filename}`;
-
-    res.json({
-      success: true,
-      message: "Document generated successfully",
-      downloadUrl: downloadUrl,
-      filename: filename,
-    });
+    // Send the PDF file directly in the response
+    res.download(outputPath, filename);
   } catch (error) {
     console.error("Error generating document:", error);
     res.status(500).json({
